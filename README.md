@@ -4,7 +4,7 @@ A library for writing purely functional, easy to reason about, and stack-safe no
 
 ## overview
 
-The architecture for pureapp applications is mainly inspired by the [Elm Architecture].
+The architecture for pureapp applications is mainly inspired by the [Elm Architecture](https://guide.elm-lang.org/architecture/).
 
 A program consists of three components:
 
