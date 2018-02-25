@@ -28,7 +28,7 @@ The internal pureapp implementation will feed the message inside the `IO` value 
 
 ## termination
 
-To control when to terminate a pureapp application is by defining a value `quit` of type `Option[Msg]`. If this special value is returned from `io` the program will terminate.
+To control when to terminate a pureapp application we define a value `quit` of type `Option[Msg]`. If this special value is returned from `io` the program will terminate.
 
 ## example
 
