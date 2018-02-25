@@ -76,4 +76,4 @@ An example that involves other side effects like e.g. reading and writing to fil
 
 Internally pureapp uses an instance of `StateT[IO, (Model, Cmd), Boolean]` where the `Boolean` value indicates termination. The program loop is implemented with `iterateUntil` which is stack safe. And the state is run with the initial `Model` and `Cmd`.
 
-Also we do not have to run our program. This is handled internally by calling `unsafeRunSync` on the `IO` value inside the state monad stack similar to scalz's SafeApp.
+Also we do not have to run our program. This is handled internally by calling `unsafeRunSync` on the `IO` value inside the state monad stack similar to scalaz's SafeApp.
