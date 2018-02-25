@@ -10,7 +10,7 @@ A program consists of three components:
 
 ### model
 
-Immutable application state.
+Represents the immutable application state.
 
 ### update
 
@@ -20,7 +20,7 @@ A way to update the application's state. `update` is a function that takes a `Mo
 
 `io` is a function that describe all side effects of an application.
 
-Unlike Elm and scalm, pureapp applications do not have a `view` function.Instead `io` is responsible for printing and reading from the standard input/output as well as other side effects.
+Unlike Elm and scalm, pureapp applications do not have a `view` function. Instead `io` is responsible for printing and reading from the standard input/output as well as other side effects.
 
 `io` takes a `Model` and returns an `IO[Msg]`. Additionally you can pass immutable, pure values of type `Cmd` that represent commands to perform other side effects than printing and reading.
 
