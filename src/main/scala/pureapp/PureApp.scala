@@ -1,8 +1,8 @@
 package pureapp
 
-import cats.Monad
 import cats.data.StateT
 import cats.effect.IO
+import cats.implicits._
 
 trait PureApp {
   type Model
@@ -22,17 +22,13 @@ trait PureApp {
   final def run(_init: (Model, Cmd) = init): IO[Unit] = {
     type Terminate = Boolean
 
-    val state: StateT[IO, (Model, Cmd), Terminate] =
-      StateT[IO, (Model, Cmd), Terminate] {
-        case (model, cmd) =>
-          io(model, cmd).map { msg =>
-            val newModel = update(msg, model)
-            (newModel, quit.contains(msg))
-          }
-      }
-
-    Monad[StateT[IO, (Model, Cmd), ?]]
-      .iterateUntil(state)(terminate => terminate)
+    StateT[IO, (Model, Cmd), Terminate] {
+      case (model, cmd) =>
+        io(model, cmd).map { msg =>
+          val newModel = update(msg, model)
+          (newModel, quit.contains(msg))
+        }
+    }.iterateUntil(terminate => terminate)
       .runA(_init)
       .map(_ => ())
   }
