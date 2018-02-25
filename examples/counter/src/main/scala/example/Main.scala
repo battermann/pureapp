@@ -3,7 +3,10 @@ package example
 import pureapp._
 import cats.effect.IO
 
-object Main extends PureApp {
+object Main extends App {
+
+  PureApp.simple(init, update, io, Some(Quit))
+
   type Model = Int
 
   sealed trait Msg
@@ -12,21 +15,17 @@ object Main extends PureApp {
   case object InvalidInput extends Msg
   case object Quit extends Msg
 
-  type Cmd = Unit
+  def init: Model = 42
 
-  def init: (Model, Cmd) = (42, ())
-
-  def update(msg: Msg, model: Model): (Model, Cmd) =
+  def update(msg: Msg, model: Model): Model =
     msg match {
-      case Increment    => (model + 1, ())
-      case Decrement    => (model - 1, ())
-      case Quit         => (model, ())
-      case InvalidInput => (model, ())
+      case Increment    => model + 1
+      case Decrement    => model - 1
+      case Quit         => model
+      case InvalidInput => model
     }
 
-  val quit = Some(Quit)
-
-  def io(model: Model, cmd: Cmd): IO[Msg] =
+  def io(model: Model): IO[Msg] =
     for {
       _ <- Terminal.putStrLn(model.toString)
       _ <- Terminal.putStrLn("enter: +, -, or q")
