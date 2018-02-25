@@ -13,112 +13,86 @@ object Main extends PureApp {
   private val fileName = "todos.csv"
 
   sealed trait Todo
-  final case class Active(name: String) extends Todo
+  final case class Active(name: String)    extends Todo
   final case class Completed(name: String) extends Todo
 
-  sealed trait Model
-  case class TodoList(list: List[Todo], statusMsg: Option[String] = None)
-      extends Model
-  case class Error(errorMessage: String, list: List[Todo]) extends Model
+  sealed trait Status
+  final case class Error(msg: String) extends Status
+  final case class Info(msg: String)  extends Status
+
+  final case class Model(
+      todos: List[Todo],
+      status: Option[Status] = None
+  )
 
   sealed trait Msg
   final case class LoadResult(result: Either[String, List[Todo]]) extends Msg
-  final case class Add(name: String) extends Msg
-  final case class Delete(id: Int) extends Msg
-  final case class MarkCompleted(id: Int) extends Msg
-  case object InvalidInput extends Msg
-  case object Save extends Msg
-  final case class SaveResult(result: Either[String, Unit]) extends Msg
-  case object Quit extends Msg
+  final case class Add(name: String)                              extends Msg
+  final case class Delete(id: Int)                                extends Msg
+  final case class MarkCompleted(id: Int)                         extends Msg
+  case object InvalidInput                                        extends Msg
+  case object Save                                                extends Msg
+  final case class SaveResult(result: Either[String, Unit])       extends Msg
+  case object Quit                                                extends Msg
 
   sealed trait Cmd
   object Cmd {
-    case object Empty extends Cmd
+    case object Empty                                         extends Cmd
     final case class Save(fileName: String, list: List[Todo]) extends Cmd
-    final case class Load(fileName: String) extends Cmd
+    final case class Load(fileName: String)                   extends Cmd
   }
 
-  def init: (Model, Cmd) = (TodoList(Nil), Cmd.Load(fileName))
+  def init: (Model, Cmd) = (Model(Nil), Cmd.Load(fileName))
 
   override val quit: Option[Msg] = Some(Quit)
 
   // UPDATE
 
   def update(msg: Msg, model: Model): (Model, Cmd) =
-    (msg, model) match {
+    msg match {
 
-      case (LoadResult(Right(list)), _) =>
-        (TodoList(list, Some("successfully loaded todos from file")),
+      case LoadResult(Right(list)) =>
+        (Model(list, Some(Info("successfully loaded todos from file"))),
          Cmd.Empty)
 
-      case (LoadResult(Left(err)), TodoList(list, _)) =>
-        (TodoList(list, Some(s"could not load todos from file. $err")), Cmd.Empty)
-
-      case (LoadResult(Left(err)), Error(_, list)) =>
-        (TodoList(list, Some(s"could not load todos from file. $err")), Cmd.Empty)
-
-      case (Add(name), TodoList(list, _)) =>
-        (TodoList(list :+ Active(name), Some("item added")), Cmd.Empty)
-
-      case (Add(name), Error(_, list)) =>
-        (TodoList(list :+ Active(name), Some("item added")), Cmd.Empty)
-
-      case (Delete(id), TodoList(list, _)) =>
-        (TodoList(list.zipWithIndex.filter { case (_, i) => i != id }.map(_._1),
-                  Some("item deleted")),
+      case LoadResult(Left(err)) =>
+        (model.copy(
+           status = Some(Info(s"could not load todos from file. $err"))),
          Cmd.Empty)
 
-      case (Delete(id), Error(_, list)) =>
-        (TodoList(list.zipWithIndex.filter { case (_, i) => i != id }.map(_._1),
-                  Some("item deleted")),
+      case Add(name) =>
+        (Model(model.todos :+ Active(name), Some(Info("item added"))),
          Cmd.Empty)
 
-      case (MarkCompleted(id), TodoList(list, _)) =>
-        val updatedList = list.zipWithIndex
+      case Delete(id) =>
+        (Model(
+           model.todos.zipWithIndex.filter { case (_, i) => i != id }.map(_._1),
+           Some(Info("item deleted"))),
+         Cmd.Empty)
+
+      case MarkCompleted(id) =>
+        val updatedList = model.todos.zipWithIndex
           .map {
             case (Active(name), i) if i == id =>
               (Completed(name), i)
             case todo => todo
           }
           .map(_._1)
-        (TodoList(updatedList, Some("marked as completed")), Cmd.Empty)
+        (Model(updatedList, Some(Info("marked as completed"))), Cmd.Empty)
 
-      case (MarkCompleted(id), Error(_, list)) =>
-        val updatedList = list.zipWithIndex
-          .map {
-            case (Active(name), i) if i == id =>
-              (Completed(name), i)
-            case todo => todo
-          }
-          .map(_._1)
-        (TodoList(updatedList, Some("marked as completed")), Cmd.Empty)
+      case InvalidInput =>
+        (model.copy(status = Some(Error("invalid input"))), Cmd.Empty)
 
-      case (InvalidInput, TodoList(list, _)) =>
-        (Error("invalid input", list), Cmd.Empty)
+      case Save =>
+        (model, Cmd.Save(fileName, model.todos))
 
-      case (InvalidInput, Error(_, list)) =>
-        (Error("invalid input", list), Cmd.Empty)
+      case SaveResult(Right(())) =>
+        (model.copy(status = Some(Info("saved successfully"))), Cmd.Empty)
 
-      case (Save, TodoList(list, _)) =>
-        (model, Cmd.Save(fileName, list))
+      case SaveResult(Left(err)) =>
+        (model.copy(status = Some(Error(err))), Cmd.Empty)
 
-      case (Save, Error(_, list)) =>
-        (model, Cmd.Save(fileName, list))
-
-      case (SaveResult(Right(())), TodoList(list, _)) =>
-        (TodoList(list, Some("saved successfully")), Cmd.Empty)
-
-      case (SaveResult(Right(())), Error(_, list)) =>
-        (TodoList(list, Some("saved successfully")), Cmd.Empty)
-
-      case (SaveResult(Left(err)), TodoList(list, _)) =>
-        (Error(err, list), Cmd.Empty)
-
-      case (SaveResult(Left(err)), Error(_, list)) =>
-        (Error(err, list), Cmd.Empty)
-
-      case (_, _) =>
-        (model, Cmd.Empty)
+      case Quit => (model, Cmd.Empty)
     }
 
   // IO
@@ -128,7 +102,7 @@ object Main extends PureApp {
     else if (input == "s") Save
     else {
       Try {
-        val cmd = input.substring(0, input.indexOf(' ')).trim
+        val cmd   = input.substring(0, input.indexOf(' ')).trim
         val value = input.substring(input.indexOf(' ')).trim
         cmd match {
           case "a" => Add(value)
@@ -180,19 +154,20 @@ object Main extends PureApp {
   def io(model: Model, cmd: Cmd): IO[Msg] =
     cmd match {
       case Cmd.Empty =>
-        model match {
-          case TodoList(list, msg) =>
+        model.status match {
+          case Some(Info(_)) | None =>
             for {
-              _ <- Terminal.putStrLn(s"\n## TODOS\n\n${formatList(list)}\n")
+              _ <- Terminal.putStrLn(
+                s"\n## TODOS\n\n${formatList(model.todos)}\n")
               _ <- printUsage
-              _ <- msg
+              _ <- model.status
                 .map(s => s"[$s]")
                 .map(Terminal.putStrLn)
                 .getOrElse(IO.unit)
               msg <- getAndParseInput
             } yield msg
 
-          case Error(err, _) =>
+          case Some(Error(err)) =>
             Terminal.putStrLn(s"\n[$err]").flatMap(_ => getAndParseInput)
         }
 

@@ -60,9 +60,9 @@ object PureApp {
       def io(model: _Model, cmd: Unit): IO[_Msg] =
         _io(model)
 
-      type Msg = _Msg
+      type Msg   = _Msg
       type Model = _Model
-      type Cmd = Unit
+      type Cmd   = Unit
       val quit: Option[_Msg] = _quit
     }
     app.main(Array())

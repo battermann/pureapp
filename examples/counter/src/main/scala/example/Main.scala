@@ -10,10 +10,10 @@ object Main extends App {
   type Model = Int
 
   sealed trait Msg
-  case object Increment extends Msg
-  case object Decrement extends Msg
+  case object Increment    extends Msg
+  case object Decrement    extends Msg
   case object InvalidInput extends Msg
-  case object Quit extends Msg
+  case object Quit         extends Msg
 
   def init: Model = 42
 
@@ -27,8 +27,8 @@ object Main extends App {
 
   def io(model: Model): IO[Msg] =
     for {
-      _ <- Terminal.putStrLn(model.toString)
-      _ <- Terminal.putStrLn("enter: +, -, or q")
+      _     <- Terminal.putStrLn(model.toString)
+      _     <- Terminal.putStrLn("enter: +, -, or q")
       input <- Terminal.readLine
     } yield {
       input match {
