@@ -35,39 +35,46 @@ To control when to terminate a pureapp application we define a value `quit` of t
 How to use pureapp can best be demonstrated with an example. Here is the pureapp version of the [Elm counter example](http://elm-lang.org/examples/buttons):
 
 ```scala
-PureApp.simple(init, update, io, Some(Quit))
+import pureapp._
+import cats.effect.IO
 
-type Model = Int
+object Main extends App {
 
-sealed trait Msg
-case object Increment    extends Msg
-case object Decrement    extends Msg
-case object InvalidInput extends Msg
-case object Quit         extends Msg
+  PureApp.simple(init, update, io, Some(Quit))
 
-def init: Model = 42
+  type Model = Int
 
-def update(msg: Msg, model: Model): Model =
-  msg match {
-    case Increment    => model + 1
-    case Decrement    => model - 1
-    case Quit         => model
-    case InvalidInput => model
-  }
+  sealed trait Msg
+  case object Increment    extends Msg
+  case object Decrement    extends Msg
+  case object InvalidInput extends Msg
+  case object Quit         extends Msg
 
-def io(model: Model): IO[Msg] =
-  for {
-    _     <- Terminal.putStrLn(model.toString)
-    _     <- Terminal.putStrLn("enter: +, -, or q")
-    input <- Terminal.readLine
-  } yield {
-    input match {
-      case "+" => Increment
-      case "-" => Decrement
-      case "q" => Quit
-      case _   => InvalidInput
+  def init: Model = 42
+
+  def update(msg: Msg, model: Model): Model =
+    msg match {
+      case Increment    => model + 1
+      case Decrement    => model - 1
+      case Quit         => model
+      case InvalidInput => model
     }
-  }
+
+  def io(model: Model): IO[Msg] =
+    for {
+      _     <- Terminal.putStrLn(model.toString)
+      _     <- Terminal.putStrLn("enter: +, -, or q")
+      input <- Terminal.readLine
+    } yield {
+      input match {
+        case "+" => Increment
+        case "-" => Decrement
+        case "q" => Quit
+        case _   => InvalidInput
+      }
+    }
+}
+
 ```
 
 An example that involves other side effects like e.g. reading and writing to files can be seen here: [TodoList](https://github.com/battermann/pureapp/blob/master/examples/todolist/src/main/scala/example/Main.scala). To achieve this we have to define a custom `Cmd` type and implement our own interpreters accordingly.
