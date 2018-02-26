@@ -24,7 +24,7 @@ Unlike Elm and scalm, pureapp applications do not have a `view` function. Instea
 
 `io` takes a `Model` and returns an `IO[Msg]`. Additionally you can pass immutable, pure values of type `Cmd` that represent commands to perform other side effects than printing and reading.
 
-The internal pureapp implementation will feed the message inside the `IO` value that is returned back into the `update` function. But this is hidden from the user and we do not have to worry about this.
+The internal pureapp implementation will feed the message inside the `IO` value back into the `update` function. However, this is hidden from the user and we do not have to worry about this.
 
 ## termination
 
