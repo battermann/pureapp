@@ -18,7 +18,7 @@ A way to update the application's state. `update` is a function that takes a `Mo
 
 ### io
 
-`io` is a function that describe all side effects of an application.
+`io` is a function that describes all side effects of an application.
 
 Unlike Elm and scalm, pureapp applications do not have a `view` function. Instead `io` is responsible for printing and reading from the standard input/output as well as other side effects.
 
