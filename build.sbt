@@ -1,6 +1,6 @@
 organization := "com.github.battermann"
 scalaVersion := "2.12.4"
-name := "com/github/battermann/pureapp"
+name := "pureapp"
 
 libraryDependencies += "org.typelevel" %% "cats-effect" % "0.10"
 resolvers += Resolver.sonatypeRepo("releases")
