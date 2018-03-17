@@ -72,7 +72,7 @@ inThisBuild(
                 url = url("http://github.com/battermann"))
     ),
     scmInfo := Some(ScmInfo(url("https://github.com/battermann/pureapp"),
-                            "scm:git:git@github.com:battermann/pureapp.git")),
+                            "scm:git@github.com:battermann/pureapp.git")),
     credentials ++= (
       for {
         username <- sys.env.get("SONATYPE_USER")
