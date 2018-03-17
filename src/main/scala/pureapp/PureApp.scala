@@ -1,10 +1,10 @@
 package pureapp
 
 import cats.data.StateT
-import cats.effect.IO
+import cats.effect.{Effect, IO}
 import cats.implicits._
 
-trait PureApp {
+abstract class PureApp[F[_]: Effect] {
   type Model
 
   type Msg
@@ -15,14 +15,14 @@ trait PureApp {
 
   def update(msg: Msg, model: Model): (Model, Cmd)
 
-  def io(model: Model, cmd: Cmd): IO[Msg]
+  def io(model: Model, cmd: Cmd): F[Msg]
 
   val quit: Option[Msg]
 
-  final def run(_init: (Model, Cmd) = init): IO[Unit] = {
+  final def run(_init: (Model, Cmd) = init): F[Unit] = {
     type Terminate = Boolean
 
-    StateT[IO, (Model, Cmd), Terminate] {
+    StateT[F, (Model, Cmd), Terminate] {
       case (model, cmd) =>
         io(model, cmd).map { msg =>
           val newModel = update(msg, model)
@@ -30,30 +30,33 @@ trait PureApp {
         }
     }.iterateUntil(terminate => terminate)
       .runA(_init)
-      .map(_ => ())
+      .void
   }
 
-  def runl(args: List[String]): IO[Unit] = run()
+  def runl(args: List[String]): F[Unit] = run()
 
   final def main(args: Array[String]): Unit = {
-    runl(args.toList).unsafeRunSync()
+    Effect[F].runAsync(runl(args.toList)){
+      case Left(err) => Terminal.putStrLn(err.getMessage)
+      case Right(_) => IO.unit
+    }.unsafeRunSync()
   }
 }
 
 object PureApp {
-  def simple[_Model, _Msg](
+  def simple[F[_]: Effect, _Model, _Msg](
       _init: _Model,
       _update: (_Msg, _Model) => _Model,
-      _io: _Model => IO[_Msg],
+      _io: _Model => F[_Msg],
       _quit: Option[_Msg]
   ): Unit = {
-    val app = new PureApp {
-      def init: (_Model, Unit) = (_init, Unit)
+    val app = new PureApp[F] {
+      def init: (_Model, Unit) = (_init, ())
 
       def update(msg: _Msg, model: _Model): (_Model, Unit) =
-        (_update(msg, model), Unit)
+        (_update(msg, model), ())
 
-      def io(model: _Model, cmd: Unit): IO[_Msg] =
+      def io(model: _Model, cmd: Unit): F[_Msg] =
         _io(model)
 
       type Msg   = _Msg

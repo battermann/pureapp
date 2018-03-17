@@ -6,7 +6,7 @@ import pureapp._
 
 import scala.util.Try
 
-object Main extends PureApp {
+object Main extends PureApp[IO] {
 
   // MODEL
 
