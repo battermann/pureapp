@@ -2,6 +2,7 @@ package example
 
 import cats.effect.IO
 import cats.implicits._
+import com.github.battermann.pureapp.{FileSystem, PureApp, Terminal}
 import pureapp._
 
 import scala.util.Try

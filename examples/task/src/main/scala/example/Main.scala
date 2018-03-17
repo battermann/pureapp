@@ -1,9 +1,8 @@
 package example
 
 import pureapp._
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import cats.implicits._
+import com.github.battermann.pureapp.PureApp
 
 object Main extends PureApp[Task] {
 

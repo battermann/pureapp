@@ -1,4 +1,4 @@
-package pureapp
+package com.github.battermann.pureapp
 
 import cats.effect.IO
 

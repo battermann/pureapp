@@ -2,6 +2,7 @@ package example
 
 import pureapp._
 import cats.effect.IO
+import com.github.battermann.pureapp.{PureApp, Terminal}
 
 object Main extends App {
 

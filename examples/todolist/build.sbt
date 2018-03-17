@@ -5,4 +5,4 @@ lazy val root = (project in file("."))
     name := "pureapp-todolist-example"
   )
 
-lazy val pureApp = ProjectRef(file("../.."), "pureapp")
+lazy val pureApp = ProjectRef(file("../.."), "com/github/battermann/pureapp")
