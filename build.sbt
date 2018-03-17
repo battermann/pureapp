@@ -1,6 +1,5 @@
-organization := "de.leifbattermann"
+organization := "com.github.battermann"
 scalaVersion := "2.12.4"
-version := "0.1.0-SNAPSHOT"
 name := "pureapp"
 
 libraryDependencies += "org.typelevel" %% "cats-effect" % "0.10"
@@ -49,7 +48,7 @@ scalacOptions ++= Seq(
   "-Ywarn-numeric-widen", // Warn when numerics are widened.
   "-Ywarn-unused:implicits", // Warn if an implicit parameter is unused.
   "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
-  "-Ywarn-unused:locals", // Warn if a local definition is unused.
+  "-Ywarn-unused:locals",  // Warn if a local definition is unused.
   // "-Ywarn-unused:params", // Warn if a value parameter is unused.
   "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
   "-Ywarn-unused:privates", // Warn if a private member is unused.
@@ -58,3 +57,30 @@ scalacOptions ++= Seq(
 
 scalacOptions in (Compile, console) --= Seq("-Ywarn-unused:imports",
                                             "-Xfatal-warnings")
+
+publishTo := sonatypePublishTo.value
+
+inThisBuild(
+  List(
+    licenses += ("MIT License", url(
+      "https://github.com/battermann/pureapp/blob/master/LICENSE")),
+    homepage := Some(url("https://github.com/battermann/pureapp")),
+    developers := List(
+      Developer(id = "battermann",
+                name = "Leif Battermann",
+                email = "leifbattermann@gmail.com",
+                url = url("http://github.com/battermann"))
+    ),
+    scmInfo := Some(ScmInfo(url("https://github.com/battermann/pureapp"),
+                            "scm:git:git@github.com:battermann/pureapp.git")),
+    credentials ++= (
+      for {
+        username <- sys.env.get("SONATYPE_USER")
+        password <- sys.env.get("SONATYPE_PASSWORD")
+      } yield
+        Credentials("Sonatype Nexus Repository Manager",
+                    "oss.sonatype.org",
+                    username,
+                    password)
+    ).toList
+  ))
