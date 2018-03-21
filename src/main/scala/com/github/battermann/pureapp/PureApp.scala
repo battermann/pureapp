@@ -4,12 +4,110 @@ import cats.data.StateT
 import cats.effect.{Effect, IO}
 import cats.implicits._
 
-abstract class PureApp[F[_]: Effect] {
+final case class Program[F[_]: Effect, Model, Msg, Cmd, Env](
+    env: F[Env],
+    init: (Model, Cmd),
+    update: (Msg, Model) => (Model, Cmd),
+    io: (Model, Cmd, Env) => F[Msg],
+    quit: Option[Msg],
+    dispose: Env => F[Unit]
+) {
+  def run(): F[Msg] = {
+
+    val app = StateT[F, (Model, Cmd, Env), Msg] {
+      case (model, cmd, env_) =>
+        io(model, cmd, env_).map { msg =>
+          val newModel = update(msg, model)
+          ((newModel._1, newModel._2, env_), msg)
+        }
+    }.iterateUntil(msg => quit.contains(msg))
+
+    for {
+      dependency <- env
+      msg        <- app.runA((init._1, init._2, dependency))
+      _          <- dispose(dependency)
+    } yield msg
+  }
+}
+
+object Program {
+  def simple[F[_]: Effect, Model, Msg](
+      init: Model,
+      update: (Msg, Model) => Model,
+      io: Model => F[Msg],
+      quit: Option[Msg]): Program[F, Model, Msg, Unit, Unit] =
+    Program(Effect[F].unit,
+            (init, ()),
+            (msg, model) => (update(msg, model), ()),
+            (model, _, _) => io(model),
+            quit,
+            _ => Effect[F].unit)
+
+  def program[F[_]: Effect, Model, Msg, Cmd](
+      init: (Model, Cmd),
+      update: (Msg, Model) => (Model, Cmd),
+      io: (Model, Cmd) => F[Msg],
+      quit: Option[Msg]): Program[F, Model, Msg, Cmd, Unit] =
+    Program(Effect[F].unit,
+            init,
+            update,
+            (model, cmd, _) => io(model, cmd),
+            quit,
+            _ => Effect[F].unit)
+}
+
+abstract class MainApp[F[_]: Effect] {
+
+  type Msg
+
+  def runl(args: List[String]): F[Msg]
+
+  final def main(args: Array[String]): Unit = {
+    Effect[F]
+      .runAsync(runl(args.toList)) {
+        case Left(err) => Terminal.putStrLn(err.getMessage)
+        case Right(_)  => IO.unit
+      }
+      .unsafeRunSync()
+  }
+}
+
+abstract class EnvPureApp[F[_]: Effect] extends MainApp[F] {
+  type Env
+
   type Model
 
   type Msg
 
   type Cmd
+
+  def env: F[Env]
+
+  def init: (Model, Cmd)
+
+  def update(msg: Msg, model: Model): (Model, Cmd)
+
+  def io(model: Model, cmd: Cmd, env: Env): F[Msg]
+
+  val quit: Option[Msg]
+
+  def dispose(env: Env): F[Unit] = Effect[F].unit
+
+  override def runl(args: List[String]): F[Msg] = run()
+
+  final def run(_init: (Model, Cmd) = init, _env: F[Env] = env): F[Msg] = {
+    Program(env, _init, update, io, quit, dispose).run()
+  }
+}
+
+abstract class PureApp[F[_]: Effect] extends MainApp[F] {
+  type Model
+
+  type Msg
+
+  type Cmd
+
+  type Env = Unit
 
   def init: (Model, Cmd)
 
@@ -19,51 +117,33 @@ abstract class PureApp[F[_]: Effect] {
 
   val quit: Option[Msg]
 
-  final def run(_init: (Model, Cmd) = init): F[Unit] = {
-    type Terminate = Boolean
+  override def runl(args: List[String]): F[Msg] = run()
 
-    StateT[F, (Model, Cmd), Terminate] {
-      case (model, cmd) =>
-        io(model, cmd).map { msg =>
-          val newModel = update(msg, model)
-          (newModel, quit.contains(msg))
-        }
-    }.iterateUntil(terminate => terminate)
-      .runA(_init)
-      .void
-  }
-
-  def runl(args: List[String]): F[Unit] = run()
-
-  final def main(args: Array[String]): Unit = {
-    Effect[F].runAsync(runl(args.toList)){
-      case Left(err) => Terminal.putStrLn(err.getMessage)
-      case Right(_) => IO.unit
-    }.unsafeRunSync()
+  final def run(_init: (Model, Cmd) = init): F[Msg] = {
+    Program.program(_init, update, io, quit).run()
   }
 }
 
-object PureApp {
-  def simple[F[_]: Effect, _Model, _Msg](
-      _init: _Model,
-      _update: (_Msg, _Model) => _Model,
-      _io: _Model => F[_Msg],
-      _quit: Option[_Msg]
-  ): Unit = {
-    val app = new PureApp[F] {
-      def init: (_Model, Unit) = (_init, ())
+abstract class SimplePureApp[F[_]: Effect] extends MainApp[F] {
+  type Model
 
-      def update(msg: _Msg, model: _Model): (_Model, Unit) =
-        (_update(msg, model), ())
+  type Msg
 
-      def io(model: _Model, cmd: Unit): F[_Msg] =
-        _io(model)
+  type Env = Unit
 
-      type Msg   = _Msg
-      type Model = _Model
-      type Cmd   = Unit
-      val quit: Option[_Msg] = _quit
-    }
-    app.main(Array())
+  type Cmd = Unit
+
+  def init: Model
+
+  def update(msg: Msg, model: Model): Model
+
+  def io(model: Model): F[Msg]
+
+  val quit: Option[Msg]
+
+  override def runl(args: List[String]): F[Msg] = run()
+
+  final def run(_init: Model = init): F[Msg] = {
+    Program.simple(_init, update, io, quit).run()
   }
 }

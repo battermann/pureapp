@@ -1,6 +1,6 @@
-# pureapp
+# PureApp
 
-A library for writing purely functional, easy to reason about, and stack-safe sequential programs inspired by [Elm](http://elm-lang.org/), [scalm](https://github.com/julienrf/scalm), and scalaz's [SafeApp](https://github.com/scalaz/scalaz/blob/bffbbcf366ca3a33dad6b3c10683228b20812bcf/effect/src/main/scala/scalaz/effect/SafeApp.scala)
+A principled and opinionated library for writing purely functional, easy to reason about, and stack-safe sequential programs partly inspired by [Elm](http://elm-lang.org/), [scalm](https://github.com/julienrf/scalm), and scalaz's [SafeApp](https://github.com/scalaz/scalaz/blob/bffbbcf366ca3a33dad6b3c10683228b20812bcf/effect/src/main/scala/scalaz/effect/SafeApp.scala)
 
 ## installtion
 
@@ -8,7 +8,7 @@ A library for writing purely functional, easy to reason about, and stack-safe se
 
 ## overview
 
-The architecture for pureapp applications is mainly inspired by the [Elm Architecture](https://guide.elm-lang.org/architecture/).
+The architecture for PureApp applications is mainly inspired by the [Elm Architecture](https://guide.elm-lang.org/architecture/).
 
 A program consists of three components:
 
@@ -24,7 +24,7 @@ A way to update the application's state. `update` is a function that takes a `Mo
 
 `io` is a function that describes all side effects of an application.
 
-Unlike Elm and scalm, pureapp applications do not have a `view` function. Instead `io` is responsible for printing and reading from the standard input/output as well as for other side effects.
+Unlike Elm and scalm, PureApp applications do not have a `view` function. Instead `io` is responsible for printing and reading from the standard input/output as well as for other side effects.
 
 `io` takes a `Model` and returns an `F[Msg]`. Where `F[_]` has an instance of [`Effect[F]`](https://typelevel.org/cats-effect/typeclasses/effect.html). Additionally you can pass immutable, pure values of type `Cmd` that represent commands to perform other side effects than just printing and reading.
 
@@ -32,19 +32,19 @@ Internally the `Msg` that is returned from `io` and wrapped inside an `F[_]` tog
 
 ## termination
 
-To control when to terminate a pureapp application we define a value `quit` of type `Option[Msg]`. If this special value is returned from `io` the program will terminate. When `quit` is `None` the application will not terminate.
+To control when to terminate a PureApp application we define a value `quit` of type `Option[Msg]`. If this special value is returned from `io` the program will terminate. When `quit` is `None` the application will not terminate.
 
 ## example
 
-How to use pureapp can best be demonstrated with an example. Here is the pureapp version of the [Elm counter example](http://elm-lang.org/examples/buttons):
+How to use PureApp can best be demonstrated with an example. Here is the PureApp version of the [Elm counter example](http://elm-lang.org/examples/buttons):
 
 ```scala
-import pureapp._
+import com.github.battermann.pureapp._
 import cats.effect.IO
 
-object Main extends App {
+object Main extends SimplePureApp[IO] {
 
-  PureApp.simple(init, update, io, Some(Quit))
+  // MODEL
 
   type Model = Int
 
@@ -56,6 +56,10 @@ object Main extends App {
 
   def init: Model = 42
 
+  val quit = Some(Quit)
+
+  // UPDATE
+
   def update(msg: Msg, model: Model): Model =
     msg match {
       case Increment    => model + 1
@@ -64,10 +68,12 @@ object Main extends App {
       case InvalidInput => model
     }
 
+  // IO
+
   def io(model: Model): IO[Msg] =
     for {
       _     <- Terminal.putStrLn(model.toString)
-      _     <- Terminal.putStrLn("enter: +, -, or q")
+      _     <- Terminal.putStr("enter: +, -, or q> ")
       input <- Terminal.readLine
     } yield {
       input match {
@@ -78,19 +84,42 @@ object Main extends App {
       }
     }
 }
-
 ```
 
-## extending `PureApp[F[_]]`
+## three different patterns
 
-If we want to write programs that involve other side effects, we have to provide a target effect type (e.g. `IO` or `Task`) and extend the `Main` object with e.g. `PureApp[IO]` or `PureApp[Task]`.
+PureApp supports three different patterns:
 
-Here is a minimal working skeleton that can be extended:
+### SimplePureApp
+
+A simple program (like the counter example from above) knows only models and messages. We can create a simple program by extending from the `SimplePureApp[F_]]` class.
+
+### PureApp
+
+A *normal* program which extends `PureApp[F[_]]` also supports commands. Normally printing to and reading from the console can be done based on the `Model` (the application state). If we want to perform other side effecting actions, we often can't or don't want to do this based on the application state. Instead we can use commands that represent requests for performing such tasks. The `io` function then becomes the interpreter for our commands as [this example](examples/command/src/main/scala/example/Main.scala) demonstrates.
+
+### EnvPureApp
+
+A program that can create and dispose resources in a referentially transparent way has to extend from the `EnvPureApp[F[_]]` class. The type `Env` represents an environment containing disposable resources and other things that do not belong into the domain model (like e.g. a configuration). We have to provide an implementation for `def env: F[Env]` and we can override  `def dispose(env: Env): F[Unit]` to dispose resources.
+
+The `io` function of an `EnvPureApp` provides an additional parameter of type `Env` that we can now use while interpreting our commands. [Here is an example](examples/env/src/main/scala/Main.scala) with an HTTP client.
+
+
+## minimal working skeleton
+
+The main object has to extend from one of the three abstract classes mentioned above. 
+
+Then the types `Model` and `Msg` have to be defined. Depending on which pattern we use we might have to define `Cmd` and `Env` as well.
+
+Usually `Msg` and `Cmd` will be implemented as sum types.
+
+Finally all abstract methods have to be implemented.
+
+Here is a minimal working skeleton to get started:
 
 ```scala
 import pureapp._
 import cats.effect.IO
-import cats.implicits._
 
 object Main extends PureApp[IO] {
 
@@ -117,9 +146,8 @@ object Main extends PureApp[IO] {
 }
 ```
 
-An example that involves other side effects like e.g. reading and writing to files can be found here: [TodoList](https://github.com/battermann/pureapp/blob/master/examples/todolist/src/main/scala/example/Main.scala). To achieve this we have to define a custom `Cmd` type and implement our own interpreters accordingly.
-
-## Command line args
+An example that is a little more involved can be found here: [TodoList](https://github.com/battermann/pureapp/blob/master/examples/todolist/src/main/scala/example/Main.scala).
+## command line args
 
 To use command line arguments we have to override the `runl(args: List[String])` method. And the call `run(_init: (Model, Cmd))` manually. Now we can use `args` for creating the initial `Model` and `Cmd` e.g. like this:
 
@@ -133,7 +161,7 @@ object Main extends PureApp[IO] {
 }  
 ```
 
-## Internals
+## internals
 
 Internally pureapp uses an instance of `StateT[F, (Model, Cmd), Boolean]` where the `Boolean` value indicates termination. The program loop is implemented with `iterateUntil` which is stack safe. And the state is run with the initial `Model` and `Cmd`.
 
