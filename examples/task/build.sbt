@@ -6,4 +6,4 @@ lazy val root = (project in file("."))
     libraryDependencies += "io.monix" % "monix_2.12" % "3.0.0-M3"
   )
 
-lazy val pureApp = ProjectRef(file("../.."), "com/github/battermann/pureapp")
+lazy val pureApp = ProjectRef(file("../.."), "pureapp")

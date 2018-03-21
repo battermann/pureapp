@@ -1,10 +1,11 @@
 package example
 
-import pureapp._
+import com.github.battermann.pureapp._
 import cats.implicits._
-import com.github.battermann.pureapp.PureApp
+import monix.execution.Scheduler.Implicits.global
+import monix.eval.Task
 
-object Main extends PureApp[Task] {
+object Main extends SimplePureApp[Task] {
 
   // MODEL
 
@@ -12,18 +13,16 @@ object Main extends PureApp[Task] {
 
   type Msg = Unit
 
-  type Cmd = Unit
-
-  def init: (Model, Cmd) = ("hello monix task", ())
+  def init: Model = "hello monix task"
 
   override val quit: Option[Msg] = Some(())
 
   // UPDATE
 
-  def update(msg: Msg, model: Model): (Model, Cmd) = (model, ())
+  def update(msg: Msg, model: Model): Model = model
 
   // IO
 
-  def io(model: Model, cmd: Cmd): Task[Msg] =
+  def io(model: Model): Task[Msg] =
     Task { println(model) }.void
 }

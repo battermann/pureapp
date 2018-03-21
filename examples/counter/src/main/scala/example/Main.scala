@@ -1,12 +1,11 @@
 package example
 
-import pureapp._
+import com.github.battermann.pureapp._
 import cats.effect.IO
-import com.github.battermann.pureapp.{PureApp, Terminal}
 
-object Main extends App {
+object Main extends SimplePureApp[IO] {
 
-  PureApp.simple(init, update, io, Some(Quit))
+  // MODEL
 
   type Model = Int
 
@@ -18,6 +17,10 @@ object Main extends App {
 
   def init: Model = 42
 
+  val quit = Some(Quit)
+
+  // UPDATE
+
   def update(msg: Msg, model: Model): Model =
     msg match {
       case Increment    => model + 1
@@ -26,10 +29,12 @@ object Main extends App {
       case InvalidInput => model
     }
 
+  // IO
+
   def io(model: Model): IO[Msg] =
     for {
       _     <- Terminal.putStrLn(model.toString)
-      _     <- Terminal.putStrLn("enter: +, -, or q")
+      _     <- Terminal.putStr("enter: +, -, or q> ")
       input <- Terminal.readLine
     } yield {
       input match {
