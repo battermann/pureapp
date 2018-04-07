@@ -1,10 +1,11 @@
 package example
 
 import cats.effect.IO
-import com.github.battermann.pureapp.{FileSystem, PureApp, Terminal}
+import com.github.battermann.pureapp._
 import cats.implicits._
+import com.github.battermann.pureapp.interpreters.{FileSystem, Terminal}
 
-object Main extends PureApp[IO] {
+object Main extends StandardPureApp[IO] {
 
   // MODEL
 
@@ -23,6 +24,8 @@ object Main extends PureApp[IO] {
   }
 
   def init: (Model, Cmd) = (None, Cmd.Empty)
+
+  def quit: Option[Msg] = Some(Quit)
 
   // UPDATE
 
@@ -58,6 +61,4 @@ object Main extends PureApp[IO] {
       case Cmd.ReadFromFile(fileName) =>
         FileSystem.readLines(fileName) map (_.map(_.mkString("\n"))) map FileContentResult
     }
-
-  val quit: Option[Msg] = Some(Quit)
 }

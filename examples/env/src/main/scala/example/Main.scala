@@ -1,20 +1,24 @@
+package example
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import cats.effect.IO
-import com.github.battermann.pureapp.{EnvPureApp, Terminal}
 import play.api.libs.ws.StandaloneWSClient
 import play.api.libs.ws.ahc.StandaloneAhcWSClient
 import play.api.libs.ws.DefaultBodyReadables._
 import scala.concurrent.ExecutionContext.Implicits._
 import cats.implicits._
 
-object Main extends EnvPureApp[IO] {
+import com.github.battermann.pureapp._
+import com.github.battermann.pureapp.interpreters._
+
+object Main extends PureApp[IO] {
 
   // MODEL
 
   type Model = String
 
-  final case class Env(wsClient: StandaloneAhcWSClient, system: ActorSystem)
+  final case class Resource(wsClient: StandaloneAhcWSClient, system: ActorSystem)
 
   sealed trait Msg
   case object Quit extends Msg
@@ -27,6 +31,8 @@ object Main extends EnvPureApp[IO] {
 
   def init: (Model, Cmd) = ("http://www.google.com", Cmd.GetRequest)
 
+  def quit: Option[Msg] = Some(Quit)
+
   // UPDATE
 
   def update(msg: Msg, model: Model): (Model, Cmd) =
@@ -34,13 +40,13 @@ object Main extends EnvPureApp[IO] {
 
   // IO
 
-  def env: IO[Env] = IO {
+  def acquire: IO[Resource] = IO {
     implicit val sys = ActorSystem()
     implicit val mat = ActorMaterializer()
-    Env(StandaloneAhcWSClient(), sys)
+    Resource(StandaloneAhcWSClient(), sys)
   }
 
-  override def dispose(env: Env): IO[Unit] = IO {
+  def dispose(env: Resource): IO[Unit] = IO {
     env.wsClient.close()
     env.system.terminate()
   }
@@ -55,7 +61,7 @@ object Main extends EnvPureApp[IO] {
       }
     }.attempt
 
-  def io(model: Model, cmd: Cmd, env: Env): IO[Msg] =
+  def io(model: Model, cmd: Cmd, env: Resource): IO[Msg] =
     cmd match {
       case Cmd.GetRequest =>
         call(env.wsClient, model)
@@ -64,6 +70,4 @@ object Main extends EnvPureApp[IO] {
 
       case Cmd.Empty => Quit.pure[IO]
     }
-
-  val quit: Option[Msg] = Some(Quit)
 }

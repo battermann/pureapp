@@ -1,4 +1,4 @@
-package com.github.battermann.pureapp
+package com.github.battermann.pureapp.interpreters
 
 import java.io.{File, PrintWriter}
 

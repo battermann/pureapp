@@ -14,7 +14,7 @@ object Main extends SimplePureApp[IO] {
 
   def init: Model = "hello pureapp"
 
-  override val quit: Option[Msg] = Some(())
+  def quit: Option[Msg] = Some(())
 
   override def runl(args: List[String]) =
     run(s"args: [${args.mkString(", ")}]")

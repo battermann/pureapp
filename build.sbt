@@ -2,9 +2,17 @@ organization := "com.github.battermann"
 scalaVersion := "2.12.4"
 name := "pureapp"
 
+enablePlugins(TutPlugin)
+tutTargetDirectory := baseDirectory.value
+scalacOptions in Tut --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
+
 libraryDependencies += "org.typelevel" %% "cats-effect" % "0.10"
+
 resolvers += Resolver.sonatypeRepo("releases")
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4")
+addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.4")
+addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.1.0")
+
+compile := (compile in Compile dependsOn tut).value
 
 scalacOptions ++= Seq(
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
