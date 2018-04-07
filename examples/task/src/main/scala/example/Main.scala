@@ -15,7 +15,7 @@ object Main extends SimplePureApp[Task] {
 
   def init: Model = "hello monix task"
 
-  override val quit: Option[Msg] = Some(())
+  def quit: Option[Msg] = Some(())
 
   // UPDATE
 

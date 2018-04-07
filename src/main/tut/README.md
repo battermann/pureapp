@@ -42,15 +42,10 @@ To control when to terminate a PureApp application we define `def quit: Option[M
 
 How to use PureApp can best be demonstrated with an example. Here is the PureApp version of the [Elm counter example](http://elm-lang.org/examples/buttons):
 
-```scala
+```tut:book
 import com.github.battermann.pureapp._
-// import com.github.battermann.pureapp._
-
 import com.github.battermann.pureapp.interpreters.Terminal._
-// import com.github.battermann.pureapp.interpreters.Terminal._
-
 import cats.effect.IO
-// import cats.effect.IO
 
 object Main extends SimplePureApp[IO] {
 
@@ -94,7 +89,6 @@ object Main extends SimplePureApp[IO] {
       }
     }
 }
-// defined object Main
 ```
 
 ## three different patterns
@@ -142,7 +136,7 @@ And optionally:
 
 Here is a minimal working skeleton to get started:
 
-```scala
+```tut:book
 object Main extends StandardPureApp[IO] {
 
   // MODEL
@@ -166,10 +160,8 @@ object Main extends StandardPureApp[IO] {
   def io(model: Model, cmd: Cmd): IO[Msg] =
     putStrLn(model)
 }
-// defined object Main
 
 Main.main(Array())
-// Hello PureApp!
 ```
 
 An example that is a little more involved can be found here: [TodoList](https://github.com/battermann/pureapp/blob/master/examples/todolist/src/main/scala/example/Main.scala).
@@ -178,7 +170,7 @@ An example that is a little more involved can be found here: [TodoList](https://
 
 To use command line arguments we have to override the `runl(args: List[String])` method. And the call `run(_init: (Model, Cmd))` manually. Now we can use `args` for creating the initial `Model` and `Cmd` e.g. like this:
 
-```scala
+```tut:book:silent:fail
 object Main extends StandardPureApp[IO] {
   
   override def runl(args: List[String])
@@ -206,9 +198,8 @@ Now we have all the compositional capabilities at hand that the type `F[_]` offe
 
 Here is a (not very meaningful) example of showing the technique of composing programs:
 
-```scala
+```tut:book
 import cats.implicits._
-// import cats.implicits._
 
 val p1 = Program.simple(
 	  "Hello PureApp 1!",
@@ -216,21 +207,17 @@ val p1 = Program.simple(
 	  (_: String) => IO.unit,
 	  Some(())
   ).withResult(List(_)).build()
-// p1: cats.effect.IO[List[String]] = IO$583449376
-
+  
 val p2 = Program.simple(
 	  "Hello PureApp 2!",
 	  (_: Unit, model: String) => model,
 	  (_: String) => IO.unit,
 	  Some(())
   ).withResult(List(_)).build()
-// p2: cats.effect.IO[List[String]] = IO$791645661
-
+  
 val program = p1 |+| p2
-// program: cats.effect.IO[List[String]] = IO$535206741
 
 program.unsafeRunSync()
-// res1: List[String] = List(Hello PureApp 1!, Hello PureApp 2!)
 ```
 
 Alternatively and for convenience, instead of using the constructors we can implement one of the three abstract classes:
@@ -241,7 +228,7 @@ Alternatively and for convenience, instead of using the constructors we can impl
 
 Here is how to apply this approach to the example from above:
 
-```scala
+```tut:book
 object Hello1 extends SimplePureProgram[IO] {
   type Model = String
   type Msg = Unit
@@ -250,7 +237,6 @@ object Hello1 extends SimplePureProgram[IO] {
   def update(msg: Msg, model: Model): Model = model
   def io(model: Model): IO[Msg] = IO.unit
 }
-// defined object Hello1
 
 object Hello2 extends SimplePureProgram[IO] {
   type Model = String
@@ -260,12 +246,11 @@ object Hello2 extends SimplePureProgram[IO] {
   def update(msg: Msg, model: Model): Model = model
   def io(model: Model): IO[Msg] = IO.unit
 }
-// defined object Hello2
 ```
 
 Similar to scalaz, PureApp offers an abstract class `SafeApp[F[_]]` that provides an implementation of the `main` method by running a specified `Effect[F]`. We can use this to embed the composition of the two programs:
 
-```scala
+```tut:book
 object Main extends SafeApp[IO] {
 
   val program =
@@ -275,10 +260,8 @@ object Main extends SafeApp[IO] {
   override def run: IO[Unit] =
     program.flatMap(v => putStrLn(v.toString))
 }
-// defined object Main
 
 Main.main(Array())
-// List(Hello PureApp 1!, Hello PureApp 2!)
 ```
 
 

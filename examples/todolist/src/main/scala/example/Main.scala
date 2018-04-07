@@ -2,11 +2,12 @@ package example
 
 import cats.effect.IO
 import cats.implicits._
-import com.github.battermann.pureapp.{FileSystem, PureApp, Terminal}
+import com.github.battermann.pureapp._
+import com.github.battermann.pureapp.interpreters.{FileSystem, Terminal}
 
 import scala.util.Try
 
-object Main extends PureApp[IO] {
+object Main extends StandardPureApp[IO] {
 
   // MODEL
 
@@ -44,7 +45,7 @@ object Main extends PureApp[IO] {
 
   def init: (Model, Cmd) = (Model(Nil), Cmd.Load(fileName))
 
-  override val quit: Option[Msg] = Some(Quit)
+  def quit: Option[Msg] = Some(Quit)
 
   // UPDATE
 
