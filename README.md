@@ -4,7 +4,7 @@ A principled and opinionated library for writing purely functional, easy to reas
 
 ## installtion
 
-    libraryDependencies += "com.github.battermann" %% "pureapp" % "0.2.0"
+    libraryDependencies += "com.github.battermann" %% "pureapp" % "0.3.0"
 
 ## overview
 
@@ -216,7 +216,7 @@ val p1 = Program.simple(
 	  (_: String) => IO.unit,
 	  Some(())
   ).withResult(List(_)).build()
-// p1: cats.effect.IO[List[String]] = IO$583449376
+// p1: cats.effect.IO[List[String]] = IO$1191623764
 
 val p2 = Program.simple(
 	  "Hello PureApp 2!",
@@ -224,10 +224,10 @@ val p2 = Program.simple(
 	  (_: String) => IO.unit,
 	  Some(())
   ).withResult(List(_)).build()
-// p2: cats.effect.IO[List[String]] = IO$791645661
+// p2: cats.effect.IO[List[String]] = IO$223632852
 
 val program = p1 |+| p2
-// program: cats.effect.IO[List[String]] = IO$535206741
+// program: cats.effect.IO[List[String]] = IO$2000086839
 
 program.unsafeRunSync()
 // res1: List[String] = List(Hello PureApp 1!, Hello PureApp 2!)
