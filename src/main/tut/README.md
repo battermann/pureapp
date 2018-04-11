@@ -182,7 +182,7 @@ object Main extends StandardPureApp[IO] {
 
 ## composability
 
-PureApp programs are pure, immutable values represented by the case class `Program[F[_]: Effect, Model, Msg, Cmd, Resource, Result]`.
+PureApp programs are pure, immutable values represented by the case class `Program[F[_]: Effect, Model, Msg, Cmd, Resource, A]`.
 
 There are different constructors for the three different flavours described above:
 
@@ -190,7 +190,7 @@ There are different constructors for the three different flavours described abov
 - `Program.standard(...)`
 - or `Program.apply(...)`
 
-By default, the final result of a program is `F[Unit]`. However, if we want to compose programs, we need something more meaningful. To achieve this, we can use the method `withResult(mkResult: Model => Result)` and pass a function that describes how to create a result value from the final application state.
+By default, the final result of a program is `F[Model]`, the final application state. If we need our program to return something else we can map over it with `map` and pass a function `f: A => B`. 
 
 To finally create a composable program, we have to transform it to it's representation in the context of it's effect type `F[_]` by calling `build()`. Note that this will not run the program.
 
@@ -206,14 +206,14 @@ val p1 = Program.simple(
 	  (_: Unit, model: String) => model,
 	  (_: String) => IO.unit,
 	  Some(())
-  ).withResult(List(_)).build()
+  ).map(List(_)).build()
   
 val p2 = Program.simple(
 	  "Hello PureApp 2!",
 	  (_: Unit, model: String) => model,
 	  (_: String) => IO.unit,
 	  Some(())
-  ).withResult(List(_)).build()
+  ).map(List(_)).build()
   
 val program = p1 |+| p2
 
@@ -254,8 +254,8 @@ Similar to scalaz, PureApp offers an abstract class `SafeApp[F[_]]` that provide
 object Main extends SafeApp[IO] {
 
   val program =
-    Hello1.program.withResult(List(_)).build() |+|
-      Hello2.program.withResult(List(_)).build()  
+    Hello1.program.map(List(_)).build() |+|
+      Hello2.program.map(List(_)).build()  
       
   override def run: IO[Unit] =
     program.flatMap(v => putStrLn(v.toString))

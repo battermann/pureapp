@@ -2,20 +2,26 @@ package com.github.battermann.pureapp
 
 import cats.data.StateT
 import cats.effect.{Effect, IO}
+import cats.evidence.Leibniz
 import cats.implicits._
 import com.github.battermann.pureapp.interpreters.Terminal
 
-final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, Result](
+final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
     acquire: F[Resource],
     init: (Model, Cmd),
     update: (Msg, Model) => (Model, Cmd),
     io: (Model, Cmd, Resource) => F[Msg],
     quit: Option[Msg],
     dispose: Resource => F[Unit],
-    mkResult: Model => Result
+    mkResult: Model => A
 ) {
-  def build(): F[Result] = {
 
+  /** Transforms a program to it's representation in the context of it's effect type `F[_]` and maps the function `f` over the final value produced by the program. The program will not be run. */
+  def build[B](f: A => B): F[B] =
+    this.map(f).build()
+
+  /** Transforms a program to it's representation in the context of it's effect type `F[_]`. The program will not be run. */
+  def build(): F[A] = {
     val app = StateT[F, (Model, Cmd, Resource), Msg] {
       case (model, cmd, resource) =>
         io(model, cmd, resource).map { msg =>
@@ -24,50 +30,84 @@ final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, Result](
         }
     }
 
-    for {
+    val finalState = for {
       resource <- acquire
-      (finalState, _, _) <- app
+      (state, _, _) <- app
         .iterateUntil(quit.contains(_))
         .runS((init._1, init._2, resource))
       _ <- dispose(resource)
     } yield
       quit
-        .map(update(_, finalState))
-        .fold(mkResult(finalState)) { case (m, _) => mkResult(m) }
+        .map(update(_, state))
+        .fold(state)(_._1)
+
+    finalState.map(mkResult)
   }
 
-  def withResult[A](mkResult: Model => A)
-    : Program[F, Model, Msg, Cmd, Resource, A] =
+  /** Maps the function `f` over the final value produced by the program. */
+  def map[B](f: A => B): Program[F, Model, Msg, Cmd, Resource, B] =
+    Program(acquire, init, update, io, quit, dispose, mkResult andThen f)
+
+  /** Creates a new program with the target type `G[_]` by replacing its `acquire`, `io`, and `dispose` function. */
+  def withInterpreter[G[_]: Effect, R](
+      acquire: G[R],
+      io: (Model, Cmd, R) => G[Msg],
+      dispose: R => G[Unit]): Program[G, Model, Msg, Cmd, R, A] =
     Program(acquire, init, update, io, quit, dispose, mkResult)
+
+  /** Creates a new standard program with the target type `G[_]` with the given `io` function. */
+  def withInterpreter[G[_]: Effect](io: (Model, Cmd) => G[Msg])(
+      implicit ev1: Resource Leibniz Unit)
+    : Program[G, Model, Msg, Cmd, Unit, A] =
+    ev1
+      .substitute[Program[F, Model, Msg, Cmd, ?, A]](this)
+      .withInterpreter(Effect[G].unit,
+                       (model, cmd, _) => io(model, cmd),
+                       _ => Effect[G].unit)
+
+  /** Creates a new simple program with the target type `G[_]` with the given `io` function. */
+  def withInterpreter[G[_]: Effect](io: Model => G[Msg])(
+      implicit ev1: Resource Leibniz Unit,
+      ev2: Cmd Leibniz Unit): Program[G, Model, Msg, Unit, Unit, A] = {
+    val sub = ev1.substitute[Program[F, Model, Msg, Cmd, ?, A]](this)
+    ev2
+      .substitute[Program[F, Model, Msg, ?, Unit, A]](sub)
+      .withInterpreter(Effect[G].unit,
+                       (model, _, _) => io(model),
+                       _ => Effect[G].unit)
+  }
 }
 
 object Program {
+
+  /** Constructor for a simple program.*/
   def simple[F[_]: Effect, Model, Msg](
       init: Model,
       update: (Msg, Model) => Model,
       io: Model => F[Msg],
       quit: Option[Msg]
-  ): Program[F, Model, Msg, Unit, Unit, Unit] =
+  ): Program[F, Model, Msg, Unit, Unit, Model] =
     Program(Effect[F].unit,
             (init, ()),
             (msg, model) => (update(msg, model), ()),
             (model, _, _) => io(model),
             quit,
             _ => Effect[F].unit,
-            _ => ())
+            identity)
 
+  /** Constructor for a standard program.*/
   def standard[F[_]: Effect, Model, Msg, Cmd](
       init: (Model, Cmd),
       update: (Msg, Model) => (Model, Cmd),
       io: (Model, Cmd) => F[Msg],
-      quit: Option[Msg]): Program[F, Model, Msg, Cmd, Unit, Unit] =
+      quit: Option[Msg]): Program[F, Model, Msg, Cmd, Unit, Model] =
     Program(Effect[F].unit,
             init,
             update,
             (model, cmd, _) => io(model, cmd),
             quit,
             _ => Effect[F].unit,
-            _ => ())
+            identity)
 }
 
 abstract class PureProgram[F[_]: Effect] {
@@ -91,8 +131,8 @@ abstract class PureProgram[F[_]: Effect] {
 
   def dispose(env: Resource): F[Unit]
 
-  val program: Program[F, Model, Msg, Cmd, Resource, Unit] =
-    Program(acquire, init, update, io, quit, dispose, (_: Model) => ())
+  val program: Program[F, Model, Msg, Cmd, Resource, Model] =
+    Program(acquire, init, update, io, quit, dispose, identity)
 }
 
 abstract class StandardPureProgram[F[_]: Effect] {
@@ -110,7 +150,7 @@ abstract class StandardPureProgram[F[_]: Effect] {
 
   def quit: Option[Msg]
 
-  val program: Program[F, Model, Msg, Cmd, Unit, Unit] =
+  val program: Program[F, Model, Msg, Cmd, Unit, Model] =
     Program.standard(init, update, io, quit)
 }
 
@@ -127,7 +167,7 @@ abstract class SimplePureProgram[F[_]: Effect] {
 
   def quit: Option[Msg]
 
-  val program: Program[F, Model, Msg, Unit, Unit, Unit] =
+  val program: Program[F, Model, Msg, Unit, Unit, Model] =
     Program.simple(init, update, io, quit)
 }
 
@@ -136,7 +176,7 @@ abstract class PureApp[F[_]: Effect] extends PureProgram[F] {
   def runl(args: List[String]): F[Unit] = run()
 
   def run(_init: (Model, Cmd) = init): F[Unit] =
-    program.copy(init = _init).build()
+    program.copy(init = _init).build().void
 
   final def main(args: Array[String]): Unit =
     Effect[F]
@@ -151,7 +191,7 @@ abstract class StandardPureApp[F[_]: Effect] extends StandardPureProgram[F] {
   def runl(args: List[String]): F[Unit] = run()
 
   def run(_init: (Model, Cmd) = init): F[Unit] =
-    program.copy(init = _init).build()
+    program.copy(init = _init).build().void
 
   final def main(args: Array[String]): Unit =
     Effect[F]
@@ -166,7 +206,7 @@ abstract class SimplePureApp[F[_]: Effect] extends SimplePureProgram[F] {
   def runl(args: List[String]): F[Unit] = run()
 
   def run(_init: Model = init): F[Unit] =
-    program.copy(init = (_init, ())).build()
+    program.copy(init = (_init, ())).build().void
 
   final def main(args: Array[String]): Unit =
     Effect[F]
