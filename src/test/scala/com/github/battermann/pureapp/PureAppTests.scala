@@ -9,7 +9,7 @@ class PureAppTests extends FunSuite with Matchers {
   test("create a simple program and replace the interpreter") {
     val program =
       SimpleHello.program
-        .withInterpreter(_ => StateT.pure[IO, String, Unit](()))
+        .withIoSimple(_ => StateT.pure[IO, String, Unit](()))
         .build()
 
     val expected = "Hello SimplePureProgram!"
@@ -20,7 +20,7 @@ class PureAppTests extends FunSuite with Matchers {
   test("create a standard program and replace the interpreter") {
     val program =
       StandardHello.program
-        .withInterpreter((_, _) => StateT.pure[IO, String, Unit](()))
+        .withIoStandard((_, _) => StateT.pure[IO, String, Unit](()))
         .build()
 
     val expected = "Hello StandardPureProgram!"

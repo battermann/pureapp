@@ -2,8 +2,8 @@ package com.github.battermann.pureapp
 
 import cats.data.StateT
 import cats.effect.{Effect, IO}
-import cats.evidence.Leibniz
 import cats.implicits._
+import com.github.battermann.pureapp.Program.{SimpleProgram, StandardProgram}
 import com.github.battermann.pureapp.interpreters.Terminal
 
 final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
@@ -17,7 +17,7 @@ final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
 ) {
 
   /** Transforms a program to it's representation in the context of it's effect type `F[_]` and maps the function `f` over the final value produced by the program. The program will not be run. */
-  def build[B](f: A => B): F[B] =
+  def buildMap[B](f: A => B): F[B] =
     this.map(f).build()
 
   /** Transforms a program to it's representation in the context of it's effect type `F[_]`. The program will not be run. */
@@ -49,36 +49,20 @@ final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
     Program(acquire, init, update, io, quit, dispose, mkResult andThen f)
 
   /** Creates a new program with the target type `G[_]` by replacing its `acquire`, `io`, and `dispose` function. */
-  def withInterpreter[G[_]: Effect, R](
+  def withIo[G[_]: Effect, R](
       acquire: G[R],
       io: (Model, Cmd, R) => G[Msg],
       dispose: R => G[Unit]): Program[G, Model, Msg, Cmd, R, A] =
     Program(acquire, init, update, io, quit, dispose, mkResult)
-
-  /** Creates a new standard program with the target type `G[_]` with the given `io` function. */
-  def withInterpreter[G[_]: Effect](io: (Model, Cmd) => G[Msg])(
-      implicit ev1: Resource Leibniz Unit)
-    : Program[G, Model, Msg, Cmd, Unit, A] =
-    ev1
-      .substitute[Program[F, Model, Msg, Cmd, ?, A]](this)
-      .withInterpreter(Effect[G].unit,
-                       (model, cmd, _) => io(model, cmd),
-                       _ => Effect[G].unit)
-
-  /** Creates a new simple program with the target type `G[_]` with the given `io` function. */
-  def withInterpreter[G[_]: Effect](io: Model => G[Msg])(
-      implicit ev1: Resource Leibniz Unit,
-      ev2: Cmd Leibniz Unit): Program[G, Model, Msg, Unit, Unit, A] = {
-    val sub = ev1.substitute[Program[F, Model, Msg, Cmd, ?, A]](this)
-    ev2
-      .substitute[Program[F, Model, Msg, ?, Unit, A]](sub)
-      .withInterpreter(Effect[G].unit,
-                       (model, _, _) => io(model),
-                       _ => Effect[G].unit)
-  }
 }
 
 object Program {
+
+  type StandardProgram[F[_], Model, Msg, Cmd, A] =
+    Program[F, Model, Msg, Cmd, Unit, A]
+
+  type SimpleProgram[F[_], Model, Msg, A] =
+    Program[F, Model, Msg, Unit, Unit, A]
 
   /** Constructor for a simple program.*/
   def simple[F[_]: Effect, Model, Msg](
@@ -86,7 +70,7 @@ object Program {
       update: (Msg, Model) => Model,
       io: Model => F[Msg],
       quit: Option[Msg]
-  ): Program[F, Model, Msg, Unit, Unit, Model] =
+  ): SimpleProgram[F, Model, Msg, Model] =
     Program(Effect[F].unit,
             (init, ()),
             (msg, model) => (update(msg, model), ()),
@@ -100,7 +84,7 @@ object Program {
       init: (Model, Cmd),
       update: (Msg, Model) => (Model, Cmd),
       io: (Model, Cmd) => F[Msg],
-      quit: Option[Msg]): Program[F, Model, Msg, Cmd, Unit, Model] =
+      quit: Option[Msg]): StandardProgram[F, Model, Msg, Cmd, Model] =
     Program(Effect[F].unit,
             init,
             update,
@@ -108,6 +92,24 @@ object Program {
             quit,
             _ => Effect[F].unit,
             identity)
+
+  /** Creates a new standard program with the target type `G[_]` with the given `io` function. */
+  implicit class WithIoStandard[F[_]: Effect, Model, Msg, Cmd, A](
+      val p: StandardProgram[F, Model, Msg, Cmd, A]) {
+    def withIoStandard[G[_]: Effect](
+        io: (Model, Cmd) => G[Msg]): StandardProgram[G, Model, Msg, Cmd, A] =
+      p.withIo(Effect[G].unit,
+               (model, cmd, _) => io(model, cmd),
+               _ => Effect[G].unit)
+  }
+
+  /** Creates a new simple program with the target type `G[_]` with the given `io` function. */
+  implicit class WithIoSimple[F[_]: Effect, Model, Msg, A](
+    val p: SimpleProgram[F, Model, Msg, A]) {
+    def withIoSimple[G[_]: Effect](
+      io: Model => G[Msg]): SimpleProgram[G, Model, Msg, A] =
+      p.withIo(Effect[G].unit, (model, _, _) => io(model), _ => Effect[G].unit)
+  }
 }
 
 abstract class PureProgram[F[_]: Effect] {
@@ -150,7 +152,7 @@ abstract class StandardPureProgram[F[_]: Effect] {
 
   def quit: Option[Msg]
 
-  val program: Program[F, Model, Msg, Cmd, Unit, Model] =
+  val program: StandardProgram[F, Model, Msg, Cmd, Model] =
     Program.standard(init, update, io, quit)
 }
 
@@ -167,7 +169,7 @@ abstract class SimplePureProgram[F[_]: Effect] {
 
   def quit: Option[Msg]
 
-  val program: Program[F, Model, Msg, Unit, Unit, Model] =
+  val program: SimpleProgram[F, Model, Msg, Model] =
     Program.simple(init, update, io, quit)
 }
 
