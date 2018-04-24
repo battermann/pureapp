@@ -15,7 +15,7 @@ object Main extends SimplePureApp[Task] {
 
   def init: Model = "hello monix task"
 
-  def quit: Option[Msg] = Some(())
+  def quit(msg: Msg): Boolean = true
 
   // UPDATE
 

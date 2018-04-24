@@ -25,7 +25,7 @@ object Main extends StandardPureApp[IO] {
 
   def init: (Model, Cmd) = (None, Cmd.Empty)
 
-  def quit: Option[Msg] = Some(Quit)
+  def quit(msg: Msg): Boolean = msg == Quit
 
   // UPDATE
 

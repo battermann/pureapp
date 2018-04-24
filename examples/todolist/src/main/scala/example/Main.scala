@@ -45,7 +45,7 @@ object Main extends StandardPureApp[IO] {
 
   def init: (Model, Cmd) = (Model(Nil), Cmd.Load(fileName))
 
-  def quit: Option[Msg] = Some(Quit)
+  def quit(msg: Msg): Boolean = msg == Quit
 
   // UPDATE
 

@@ -31,7 +31,7 @@ object Main extends PureApp[IO] {
 
   def init: (Model, Cmd) = ("http://www.google.com", Cmd.GetRequest)
 
-  def quit: Option[Msg] = Some(Quit)
+  def quit(msg: Msg): Boolean = msg == Quit
 
   // UPDATE
 

@@ -11,7 +11,7 @@ final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
     init: (Model, Cmd),
     update: (Msg, Model) => (Model, Cmd),
     io: (Model, Cmd, Resource) => F[Msg],
-    quit: Option[Msg],
+    quit: Msg => Boolean,
     dispose: Resource => F[Unit],
     mkResult: Model => A
 ) {
@@ -30,18 +30,17 @@ final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
         }
     }
 
-    val finalState = for {
-      resource <- acquire
-      (state, _, _) <- app
-        .iterateUntil(quit.contains(_))
-        .runS((init._1, init._2, resource))
-      _ <- dispose(resource)
-    } yield
-      quit
-        .map(update(_, state))
-        .fold(state)(_._1)
+    val (initialModel, initialCmd) = init
 
-    finalState.map(mkResult)
+    val finalModel = for {
+      resource <- acquire
+      ((model, _, _), msg) <- app
+        .iterateUntil(quit)
+        .run((initialModel, initialCmd, resource))
+      _ <- dispose(resource)
+    } yield update(msg, model)._1
+
+    finalModel.map(mkResult)
   }
 
   /** Maps the function `f` over the final value produced by the program. */
@@ -69,7 +68,7 @@ object Program {
       init: Model,
       update: (Msg, Model) => Model,
       io: Model => F[Msg],
-      quit: Option[Msg]
+      quit: Msg => Boolean
   ): SimpleProgram[F, Model, Msg, Model] =
     Program(Effect[F].unit,
             (init, ()),
@@ -84,7 +83,7 @@ object Program {
       init: (Model, Cmd),
       update: (Msg, Model) => (Model, Cmd),
       io: (Model, Cmd) => F[Msg],
-      quit: Option[Msg]): StandardProgram[F, Model, Msg, Cmd, Model] =
+      quit: Msg => Boolean): StandardProgram[F, Model, Msg, Cmd, Model] =
     Program(Effect[F].unit,
             init,
             update,
@@ -105,9 +104,9 @@ object Program {
 
   /** Creates a new simple program with the target type `G[_]` with the given `io` function. */
   implicit class WithIoSimple[F[_]: Effect, Model, Msg, A](
-    val p: SimpleProgram[F, Model, Msg, A]) {
+      val p: SimpleProgram[F, Model, Msg, A]) {
     def withIoSimple[G[_]: Effect](
-      io: Model => G[Msg]): SimpleProgram[G, Model, Msg, A] =
+        io: Model => G[Msg]): SimpleProgram[G, Model, Msg, A] =
       p.withIo(Effect[G].unit, (model, _, _) => io(model), _ => Effect[G].unit)
   }
 }
@@ -129,7 +128,7 @@ abstract class PureProgram[F[_]: Effect] {
 
   def io(model: Model, cmd: Cmd, env: Resource): F[Msg]
 
-  def quit: Option[Msg]
+  def quit(msg: Msg): Boolean
 
   def dispose(env: Resource): F[Unit]
 
@@ -150,7 +149,7 @@ abstract class StandardPureProgram[F[_]: Effect] {
 
   def io(model: Model, cmd: Cmd): F[Msg]
 
-  def quit: Option[Msg]
+  def quit(msg: Msg): Boolean
 
   val program: StandardProgram[F, Model, Msg, Cmd, Model] =
     Program.standard(init, update, io, quit)
@@ -167,7 +166,7 @@ abstract class SimplePureProgram[F[_]: Effect] {
 
   def io(model: Model): F[Msg]
 
-  def quit: Option[Msg]
+  def quit(msg: Msg): Boolean
 
   val program: SimpleProgram[F, Model, Msg, Model] =
     Program.simple(init, update, io, quit)

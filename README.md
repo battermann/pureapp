@@ -4,7 +4,7 @@ A principled and opinionated library for writing purely functional, easy to reas
 
 ## installtion
 
-    libraryDependencies += "com.github.battermann" %% "pureapp" % "0.4.2"
+    libraryDependencies += "com.github.battermann" %% "pureapp" % "0.5.0"
 
 ## overview
 
@@ -36,7 +36,7 @@ Internally the `Msg` that is returned from `io` and wrapped inside an `F[_]` tog
 
 ## termination
 
-To control when to terminate a PureApp application we define `def quit: Option[Msg]`. If the `Msg` defined as `Some` for `quit` is returned from the `io` function, the program will terminate. When `quit` is `None` the application will not terminate.
+To control when to terminate a PureApp application we define `def quit(msg: Msg): Boolean`. If `quit` returns `true` when applied to a `Msg` coming from the `io` function the program will terminate.
 
 ## example
 
@@ -66,7 +66,7 @@ object Main extends SimplePureApp[IO] {
 
   def init: Model = 42
 
-  def quit = Some(Quit)
+  def quit(msg: Msg): Boolean = msg == Quit
 
   // UPDATE
 
@@ -155,7 +155,7 @@ object Main extends StandardPureApp[IO] {
 
   def init: (Model, Cmd) = ("Hello PureApp!", ())
 
-  def quit: Option[Msg] = Some(())
+  def quit(msg: Msg): Boolean = true
 
   // UPDATE
 
@@ -181,8 +181,8 @@ To use command line arguments we have to override the `runl(args: List[String])`
 ```scala
 object Main extends StandardPureApp[IO] {
   
-  override def runl(args: List[String])
-	run((Model(args = args), Cmd.Empty))
+  override def runl(args: List[String]) =
+	  run((Model(args = args), Cmd.Empty))
 	
   // ...
 }
@@ -214,7 +214,7 @@ val p1 = Program.simple(
 	  "Hello PureApp 1!",
 	  (_: Unit, model: String) => model,
 	  (_: String) => IO.unit,
-	  Some(())
+	  (_: Unit) => true
   ).map(List(_)).build()
 // p1: cats.effect.IO[List[String]] = <function1>
 
@@ -222,12 +222,12 @@ val p2 = Program.simple(
 	  "Hello PureApp 2!",
 	  (_: Unit, model: String) => model,
 	  (_: String) => IO.unit,
-	  Some(())
+	  (_: Unit) => true
   ).map(List(_)).build()
 // p2: cats.effect.IO[List[String]] = <function1>
 
 val program = p1 |+| p2
-// program: cats.effect.IO[List[String]] = IO$1361151183
+// program: cats.effect.IO[List[String]] = IO$1552513494
 
 program.unsafeRunSync()
 // res1: List[String] = List(Hello PureApp 1!, Hello PureApp 2!)
@@ -246,7 +246,7 @@ object Hello1 extends SimplePureProgram[IO] {
   type Model = String
   type Msg = Unit
   def init: Model = "Hello PureApp 1!"
-  def quit: Option[Msg] = ().some
+  def quit(msg: Msg): Boolean = true
   def update(msg: Msg, model: Model): Model = model
   def io(model: Model): IO[Msg] = IO.unit
 }
@@ -256,7 +256,7 @@ object Hello2 extends SimplePureProgram[IO] {
   type Model = String
   type Msg = Unit
   def init: Model = "Hello PureApp 2!"
-  def quit: Option[Msg] = ().some
+  def quit(msg: Msg): Boolean = true
   def update(msg: Msg, model: Model): Model = model
   def io(model: Model): IO[Msg] = IO.unit
 }

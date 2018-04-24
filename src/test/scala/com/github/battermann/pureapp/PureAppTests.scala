@@ -32,7 +32,7 @@ class PureAppTests extends FunSuite with Matchers {
     type Model = String
     type Msg   = Unit
     def init: Model                           = "Hello SimplePureProgram!"
-    def quit: Option[Msg]                     = ().some
+    def quit(msg: Msg): Boolean               = true
     def update(msg: Msg, model: Model): Model = model
     def io(model: Model): IO[Msg]             = IO.unit
   }
@@ -42,7 +42,7 @@ class PureAppTests extends FunSuite with Matchers {
     type Msg   = Unit
     type Cmd   = Unit
     def init: (Model, Cmd)                           = ("Hello StandardPureProgram!", ())
-    def quit: Option[Msg]                            = ().some
+    def quit(msg: Msg): Boolean                      = true
     def update(msg: Msg, model: Model): (Model, Cmd) = (model, ())
     def io(model: Model, cmd: Cmd): IO[Msg]          = IO.unit
   }

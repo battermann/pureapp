@@ -18,7 +18,7 @@ object Main extends SimplePureApp[IO] {
 
   def init: Model = 42
 
-  def quit = Some(Quit)
+  def quit(msg: Msg): Boolean = msg == Quit
 
   // UPDATE
 
