@@ -4,7 +4,7 @@ A principled and opinionated library for writing purely functional, easy to reas
 
 ## installtion
 
-    libraryDependencies += "com.github.battermann" %% "pureapp" % "0.5.0"
+    libraryDependencies += "com.github.battermann" %% "pureapp" % "0.6.0"
 
 ## overview
 
