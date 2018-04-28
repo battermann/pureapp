@@ -227,7 +227,7 @@ val p2 = Program.simple(
 // p2: cats.effect.IO[List[String]] = <function1>
 
 val program = p1 |+| p2
-// program: cats.effect.IO[List[String]] = IO$87577333
+// program: cats.effect.IO[List[String]] = IO$193386343
 
 program.unsafeRunSync()
 // res1: List[String] = List(Hello PureApp 1!, Hello PureApp 2!)

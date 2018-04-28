@@ -4,7 +4,6 @@ import cats.data.StateT
 import cats.effect._
 import cats.implicits._
 import com.github.battermann.pureapp.Program.{SimpleProgram, StandardProgram}
-import com.github.battermann.pureapp.interpreters.Terminal
 
 final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
     acquire: F[Resource],
@@ -33,10 +32,11 @@ final case class Program[F[_]: Effect, Model, Msg, Cmd, Resource, A](
     val (initialModel, initialCmd) = init
 
     val finalModel = for {
-      ((model, _, _), msg) <- Bracket[F, Throwable].bracket(acquire) { resource =>
-        app
-          .iterateUntil(quit)
-          .run((initialModel, initialCmd, resource))
+      ((model, _, _), msg) <- Bracket[F, Throwable].bracket(acquire) {
+        resource =>
+          app
+            .iterateUntil(quit)
+            .run((initialModel, initialCmd, resource))
       } { resource =>
         dispose(resource)
       }
@@ -184,8 +184,9 @@ abstract class PureApp[F[_]: Effect] extends PureProgram[F] {
   final def main(args: Array[String]): Unit =
     Effect[F]
       .runAsync(runl(args.toList)) {
-        case Left(err) => Terminal.putStrLn(err.toString)
-        case Right(_)  => IO.unit
+        case Left(err) =>
+          IO { err.printStackTrace() }
+        case Right(_) => IO.unit
       }
       .unsafeRunSync()
 }
@@ -199,8 +200,9 @@ abstract class StandardPureApp[F[_]: Effect] extends StandardPureProgram[F] {
   final def main(args: Array[String]): Unit =
     Effect[F]
       .runAsync(runl(args.toList)) {
-        case Left(err) => Terminal.putStrLn(err.toString)
-        case Right(_)  => IO.unit
+        case Left(err) =>
+          IO { err.printStackTrace() }
+        case Right(_) => IO.unit
       }
       .unsafeRunSync()
 }
@@ -215,7 +217,7 @@ abstract class SimplePureApp[F[_]: Effect] extends SimplePureProgram[F] {
     Effect[F]
       .runAsync(runl(args.toList)) {
         case Left(err) =>
-          Terminal.putStrLn(err.toString)
+          IO { err.printStackTrace() }
         case Right(_) => IO.unit
       }
       .unsafeRunSync()
@@ -230,7 +232,7 @@ abstract class SafeApp[F[_]: Effect] {
     Effect[F]
       .runAsync(runl(args.toList)) {
         case Left(err) =>
-          Terminal.putStrLn(err.toString)
+          IO { err.printStackTrace() }
         case Right(_) => IO.unit
       }
       .unsafeRunSync()
