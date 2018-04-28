@@ -46,10 +46,12 @@ object Main extends PureApp[IO] {
     Resource(StandaloneAhcWSClient(), sys)
   }
 
-  def dispose(env: Resource): IO[Unit] = IO {
-    env.wsClient.close()
-    env.system.terminate()
-  }
+  def dispose(env: Resource): IO[Unit] = for {
+    _ <- Terminal.putStrLn("Disposing resources...")
+    _ <- IO(env.wsClient.close())
+    _ <- IO(env.system.terminate())
+    _ <- Terminal.putStrLn("Disposed resources.")
+  } yield ()
 
   def call(wsClient: StandaloneWSClient,
            url: String): IO[Either[Throwable, String]] =

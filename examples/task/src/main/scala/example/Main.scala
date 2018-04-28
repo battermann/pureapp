@@ -5,6 +5,9 @@ import cats.implicits._
 import monix.execution.Scheduler.Implicits.global
 import monix.eval.Task
 
+/**
+  * Currently not working, no Bracket instance for Task
+  */
 object Main extends SimplePureApp[Task] {
 
   // MODEL

@@ -6,7 +6,7 @@ enablePlugins(TutPlugin)
 tutTargetDirectory := baseDirectory.value
 scalacOptions in Tut --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 
-libraryDependencies += "org.typelevel" %% "cats-effect" % "0.10"
+libraryDependencies += "org.typelevel" %% "cats-effect" % "1.0.0-RC"
 libraryDependencies += "org.scalactic" %% "scalactic"   % "3.0.5"
 libraryDependencies += "org.scalatest" %% "scalatest"   % "3.0.5" % "test"
 
